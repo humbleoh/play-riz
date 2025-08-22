@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource
 import json
+from auth import token_required, get_token_route
 
 app = Flask(__name__)
 api = Api(app)
@@ -11,6 +12,7 @@ item_id_counter = 0
 
 # Item Resource
 class ItemResource(Resource):
+    @token_required
     def get(self, item_id=None):
         if item_id is None:
             # Return all items
@@ -21,6 +23,7 @@ class ItemResource(Resource):
                 return {"error": "Item not found"}, 404
             return {"id": item_id, **items_db[item_id]}
     
+    @token_required
     def post(self):
         global item_id_counter
         data = request.get_json()
@@ -39,6 +42,7 @@ class ItemResource(Resource):
         
         return {"id": item_id_counter, **items_db[item_id_counter]}, 201
     
+    @token_required
     def put(self, item_id):
         if item_id not in items_db:
             return {"error": "Item not found"}, 404
@@ -58,6 +62,7 @@ class ItemResource(Resource):
         
         return {"id": item_id, **items_db[item_id]}
     
+    @token_required
     def delete(self, item_id):
         if item_id not in items_db:
             return {"error": "Item not found"}, 404
@@ -71,6 +76,11 @@ api.add_resource(ItemResource, '/items', '/items/<int:item_id>')
 @app.route('/')
 def home():
     return jsonify({"message": "Welcome to the UV RESTful API"})
+
+# OAuth token endpoint
+@app.route('/oauth/token', methods=['POST'])
+def token():
+    return get_token_route()
 
 if __name__ == "__main__":
     # Run with SSL
