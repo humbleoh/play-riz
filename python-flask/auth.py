@@ -8,18 +8,46 @@ from models import User, db
 JWT_SECRET = 'your-secret-key-change-in-production'
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_DELTA = timedelta(minutes=5)
+JWT_REFRESH_EXPIRATION_DELTA = timedelta(days=7)  # Refresh tokens last 7 days
 
 def generate_token(client_id):
     """
-    Generate a JWT token for the given client_id
+    Generate a JWT access token for the given client_id
     """
     payload = {
         'client_id': client_id,
+        'type': 'access',
         'exp': datetime.utcnow() + JWT_EXPIRATION_DELTA,
         'iat': datetime.utcnow()
     }
     
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def generate_refresh_token(client_id):
+    """
+    Generate a JWT refresh token for the given client_id
+    """
+    payload = {
+        'client_id': client_id,
+        'type': 'refresh',
+        'exp': datetime.utcnow() + JWT_REFRESH_EXPIRATION_DELTA,
+        'iat': datetime.utcnow()
+    }
+    
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def validate_refresh_token(token):
+    """
+    Validate and decode a refresh token
+    Returns client_id if valid, None if invalid
+    """
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get('type') != 'refresh':
+            return None
+        return payload.get('client_id')
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
 
 def authenticate_client(client_id, client_secret):
     """
@@ -52,6 +80,11 @@ def token_required(f):
         try:
             # Decode the token
             payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            
+            # Ensure this is an access token
+            if payload.get('type') != 'access':
+                return {'error': 'Invalid token type'}, 401
+                
             client_id = payload['client_id']
             
             # Get user from database
@@ -98,13 +131,67 @@ def get_token_route():
         if not user:
             return jsonify({'error': 'Invalid client credentials'}), 401
         
-        # Generate token
-        token = generate_token(client_id)
+        # Generate tokens
+        access_token = generate_token(client_id)
+        refresh_token = generate_refresh_token(client_id)
         
         return jsonify({
-            'access_token': token,
+            'access_token': access_token,
+            'refresh_token': refresh_token,
             'token_type': 'Bearer',
             'expires_in': int(JWT_EXPIRATION_DELTA.total_seconds()),
+            'refresh_expires_in': int(JWT_REFRESH_EXPIRATION_DELTA.total_seconds()),
+            'user': {
+                'username': user.username,
+                'roles': [role.name for role in user.roles],
+                'permissions': user.get_permissions()
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': 'Internal server error'}), 500
+
+def refresh_token_route():
+    """
+    OAuth 2.0 token refresh endpoint
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+        
+        refresh_token = data.get('refresh_token')
+        grant_type = data.get('grant_type')
+        
+        # Validate required fields
+        if not all([refresh_token, grant_type]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Only support refresh_token grant type
+        if grant_type != 'refresh_token':
+            return jsonify({'error': 'Unsupported grant type'}), 400
+        
+        # Validate refresh token
+        client_id = validate_refresh_token(refresh_token)
+        if not client_id:
+            return jsonify({'error': 'Invalid or expired refresh token'}), 401
+        
+        # Get user from database
+        user = User.query.filter_by(client_id=client_id, is_active=True).first()
+        if not user:
+            return jsonify({'error': 'Invalid client'}), 401
+        
+        # Generate new tokens
+        new_access_token = generate_token(client_id)
+        new_refresh_token = generate_refresh_token(client_id)
+        
+        return jsonify({
+            'access_token': new_access_token,
+            'refresh_token': new_refresh_token,
+            'token_type': 'Bearer',
+            'expires_in': int(JWT_EXPIRATION_DELTA.total_seconds()),
+            'refresh_expires_in': int(JWT_REFRESH_EXPIRATION_DELTA.total_seconds()),
             'user': {
                 'username': user.username,
                 'roles': [role.name for role in user.roles],

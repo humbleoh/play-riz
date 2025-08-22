@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_restful import Api, Resource
 import json
 import uuid
-from auth import token_required, get_token_route, require_permission, require_role
+from auth import token_required, get_token_route, refresh_token_route, require_permission, require_role
 from models import db, User, Role, Permission, init_default_data
 
 app = Flask(__name__)
@@ -257,6 +257,11 @@ def home():
 @app.route('/oauth/token', methods=['POST'])
 def token():
     return get_token_route()
+
+# OAuth refresh token endpoint
+@app.route('/oauth/refresh', methods=['POST'])
+def refresh():
+    return refresh_token_route()
 
 if __name__ == "__main__":
     # Run with SSL

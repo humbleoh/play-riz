@@ -71,13 +71,53 @@ curl -X POST "https://localhost:8000/oauth/token" \
   --insecure
 ```
 
-**Note**: Tokens expire after 5 minutes for security purposes.
+**Response includes both access and refresh tokens:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 300,
+  "refresh_expires_in": 604800,
+  "user": {
+    "username": "admin",
+    "roles": ["admin"],
+    "permissions": ["items:read", "items:write", "items:delete", "users:read", "users:write", "users:delete"]
+  }
+}
+```
+
+**Note**: Access tokens expire after 5 minutes, refresh tokens expire after 7 days.
+
+### Refreshing Access Tokens
+
+When your access token expires, use the refresh token to get new tokens without re-authenticating:
+
+```bash
+curl -X POST "https://localhost:8000/oauth/refresh" \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "your_refresh_token_here", "grant_type": "refresh_token"}' \
+  --insecure
+```
+
+**Response provides new access and refresh tokens:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 300,
+  "refresh_expires_in": 604800,
+  "user": {...}
+}
+```
 
 ## Available Endpoints
 
 ### Public Endpoints
 - `GET /`: Welcome message (no authentication required)
 - `POST /oauth/token`: Get access token for authentication
+- `POST /oauth/refresh`: Refresh access token using refresh token
 
 ### Item Management (Requires Authentication + Permissions)
 - `POST /items`: Create a new item (requires `items:write` permission)
