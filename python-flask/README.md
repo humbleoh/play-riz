@@ -39,7 +39,7 @@ uv pip install -r requirements.txt
 python main.py
 ```
 
-The API will be available at http://localhost:8000
+The API will be available at https://localhost:8000 (SSL enabled)
 
 ## Available Endpoints
 
@@ -55,29 +55,29 @@ The API will be available at http://localhost:8000
 ### Create an item
 
 ```bash
-curl -X POST "http://localhost:8000/items" -H "Content-Type: application/json" -d '{"name": "Laptop", "description": "High-performance laptop", "price": 999.99, "tax": 10.0}'
+curl -X POST "https://localhost:8000/items" -H "Content-Type: application/json" -d '{"name": "Laptop", "description": "High-performance laptop", "price": 999.99, "tax": 10.0}' --insecure
 ```
 
 ### Get all items
 
 ```bash
-curl -X GET "http://localhost:8000/items"
+curl -X GET "https://localhost:8000/items" --insecure
 ```
 
 ### Get a specific item
 
 ```bash
-curl -X GET "http://localhost:8000/items/1"
+curl -X GET "https://localhost:8000/items/1" --insecure
 ```
 
 ### Update an item
 
 ```bash
-curl -X PUT "http://localhost:8000/items/1" -H "Content-Type: application/json" -d '{"name": "Updated Laptop", "description": "High-performance laptop with updates", "price": 1099.99, "tax": 10.0}'
+curl -X PUT "https://localhost:8000/items/1" -H "Content-Type: application/json" -d '{"name": "Updated Laptop", "description": "High-performance laptop with updates", "price": 1099.99, "tax": 10.0}' --insecure
 ```
 
 ### Delete an item
 
 ```bash
-curl -X DELETE "http://localhost:8000/items/1"
+curl -X DELETE "https://localhost:8000/items/1" --insecure
 ```
