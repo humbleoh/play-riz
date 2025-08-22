@@ -251,7 +251,7 @@ api.add_resource(PermissionResource, '/permissions', '/permissions/<int:permissi
 
 @app.route('/')
 def home():
-    return jsonify({"message": "Welcome to the UV RESTful API"})
+    return jsonify({"message": "Welcome to the RESTful API"})
 
 # OAuth token endpoint
 @app.route('/oauth/token', methods=['POST'])

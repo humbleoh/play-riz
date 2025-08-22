@@ -1,4 +1,4 @@
-# UV RESTful API
+# RESTful API
 
 A simple RESTful API built with Flask and Flask-RESTful.
 
