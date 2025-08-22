@@ -39,6 +39,25 @@ pip install pytesseract Pillow opencv-python numpy
 
 ## Installation
 
+### For End Users (Bundled Executable)
+
+1. Download the pre-built executable package for your platform
+2. Extract the package:
+   ```bash
+   tar -xzf ocr-cli-Darwin-arm64.tar.gz
+   ```
+3. Run the installation script (optional):
+   ```bash
+   cd ocr-cli
+   ./install.sh
+   ```
+4. Or use directly:
+   ```bash
+   ./ocr-cli <image_path>
+   ```
+
+### For Developers (Source Code)
+
 1. Clone or download this repository
 2. Install system dependencies (Tesseract)
 3. Install Python dependencies
@@ -46,6 +65,57 @@ pip install pytesseract Pillow opencv-python numpy
    ```bash
    chmod +x ocr_cli.py
    ```
+
+## Building and Distribution
+
+### Prerequisites for Building
+
+- Python 3.8+
+- Tesseract OCR installed
+- PyInstaller for creating bundled executables
+
+### Build Commands
+
+This project includes a comprehensive Makefile for building and packaging:
+
+```bash
+# Show all available commands
+make help
+
+# Install dependencies
+make install
+
+# Install development dependencies (includes PyInstaller)
+make install-dev
+
+# Build standalone executable (protects source code)
+make build
+
+# Test the built executable
+make run-built
+
+# Create distribution package
+make package
+
+# Clean build artifacts
+make clean
+```
+
+### Build Process
+
+The build process creates a standalone executable that:
+- **Bundles all Python dependencies** - No need for Python installation on target machine
+- **Protects source code** - Python source code is compiled and bundled, not accessible to end users
+- **Single file distribution** - Everything packaged into one executable file
+- **Cross-platform support** - Can be built for different operating systems
+
+### Distribution Package
+
+The `make package` command creates:
+- A compressed archive (`ocr-cli-<OS>-<ARCH>.tar.gz`)
+- Installation script for system-wide installation
+- README and documentation
+- Ready-to-distribute package for end users
 
 ## Usage
 
