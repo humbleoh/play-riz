@@ -3,6 +3,9 @@
 #include <stddef.h>
 #include <string.h>
 
+/* 外部函数声明 */
+extern uint32_t get_tick_count(void);
+
 /* 全局变量 */
 task_t task_pool[MAX_TASKS];           // 任务池
 task_t *current_task = NULL;           // 当前运行的任务
@@ -70,6 +73,16 @@ task_t* scheduler_get_next_task(void) {
 
 /* 调度器运行 */
 void scheduler_run(void) {
+    /* 检查所有阻塞任务是否到期 */
+    for (int i = 0; i < MAX_TASKS; i++) {
+        if (task_pool[i].state == TASK_BLOCKED && 
+            task_pool[i].task_id != 0) {
+            if (get_tick_count() >= task_pool[i].wakeup_time) {
+                task_pool[i].state = TASK_READY;
+            }
+        }
+    }
+    
     /* 获取下一个要运行的任务 */
     next_task = scheduler_get_next_task();
     

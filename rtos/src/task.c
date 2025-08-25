@@ -71,6 +71,7 @@ uint32_t rtos_create_task(void (*task_func)(void), task_priority_t priority) {
             task_pool[i].priority = priority;
             task_pool[i].state = TASK_READY;
             task_pool[i].time_slice = TIME_SLICE_MS;
+            task_pool[i].wakeup_time = 0;  // 初始化唤醒时间
             
             /* 初始化任务栈 */
             init_task_stack(&task_pool[i], task_func);

@@ -34,6 +34,7 @@ typedef struct {
     uint32_t time_slice;           // 时间片
     uint32_t task_id;              // 任务ID
     void (*task_func)(void);       // 任务函数指针
+    uint32_t wakeup_time;          // 唤醒时间点 (用于延迟)
 } task_t;
 
 /* 信号量结构 */

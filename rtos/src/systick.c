@@ -9,6 +9,7 @@ static volatile uint32_t time_slice_counter = 0;
 /* 外部变量声明 */
 extern task_t *current_task;
 extern bool scheduler_running;
+extern task_t task_pool[MAX_TASKS];
 
 /* SysTick初始化 */
 void systick_init(void) {
@@ -60,15 +61,15 @@ uint32_t get_tick_count(void) {
     return tick_count;
 }
 
-/* 延时函数 (非阻塞，基于系统滴答) */
+/* 延时函数 (阻塞延迟，基于系统滴答) */
 void rtos_delay(uint32_t ms) {
-    uint32_t start_tick = get_tick_count();
-    
-    /* 如果调度器正在运行，让出CPU */
-    if (scheduler_running) {
-        while ((get_tick_count() - start_tick) < ms) {
-            rtos_yield();
-        }
+    if (scheduler_running && current_task != NULL) {
+        /* 设置任务为阻塞状态 */
+        current_task->state = TASK_BLOCKED;
+        current_task->wakeup_time = get_tick_count() + ms;
+        
+        /* 立即触发任务切换 */
+        rtos_yield();
     } else {
         /* 调度器未运行，使用阻塞延时 */
         delay_ms(ms);
