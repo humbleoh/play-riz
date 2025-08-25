@@ -11,8 +11,8 @@ task_t task_pool[MAX_TASKS];           // 任务池
 task_t *current_task = NULL;           // 当前运行的任务
 task_t *next_task = NULL;              // 下一个要运行的任务
 bool scheduler_running = false;        // 调度器运行状态
-static uint32_t task_count = 0;        // 当前任务数量
-static uint32_t next_task_id = 1;      // 下一个任务ID
+uint32_t task_count = 0;        // 当前任务数量
+uint32_t next_task_id = 1;      // 下一个任务ID
 
 /* 空闲任务 */
 static void idle_task(void) {
