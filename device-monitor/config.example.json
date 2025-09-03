@@ -1,0 +1,49 @@
+{
+  "mqtt": {
+    "host": "localhost",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "keepalive": 60,
+    "clean_session": true
+  },
+  "server": {
+    "server_id": "server001",
+    "device_timeout": 30,
+    "max_devices": 100,
+    "log_level": "info"
+  },
+  "device": {
+    "device_id": "device001",
+    "device_type": "sensor",
+    "status_interval": 10,
+    "heartbeat_interval": 5,
+    "reconnect_delay": 5,
+    "max_reconnect_attempts": 10,
+    "simulate_data": false
+  },
+  "topics": {
+    "device_status": "device/{device_id}/status",
+    "device_heartbeat": "device/{device_id}/heartbeat",
+    "device_command": "device/{device_id}/command",
+    "device_response": "device/{device_id}/response",
+    "server_status_request": "server/status_request/{device_id}"
+  },
+  "simulation": {
+    "temperature": {
+      "min": 18.0,
+      "max": 35.0,
+      "variation": 2.0
+    },
+    "humidity": {
+      "min": 30.0,
+      "max": 80.0,
+      "variation": 5.0
+    },
+    "battery": {
+      "min": 20.0,
+      "max": 100.0,
+      "drain_rate": 0.1
+    }
+  }
+}
