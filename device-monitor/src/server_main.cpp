@@ -34,6 +34,9 @@ void printHelp() {
     std::cout << "  --key-file <path>    Client private key file path" << std::endl;
     std::cout << "  --no-verify-peer     Disable peer certificate verification" << std::endl;
     std::cout << "  --no-verify-hostname Disable hostname verification" << std::endl;
+    std::cout << "  --auth               Enable username/password authentication" << std::endl;
+    std::cout << "  --username <user>    MQTT username for authentication" << std::endl;
+    std::cout << "  --password <pass>    MQTT password for authentication" << std::endl;
 }
 
 // 交互式命令处理
@@ -190,6 +193,11 @@ int main(int argc, char* argv[]) {
     bool verify_peer = true;
     bool verify_hostname = true;
     
+    // 身份验证配置参数
+    bool auth_enabled = false;
+    std::string username = "";
+    std::string password = "";
+    
     // 解析命令行参数
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -228,6 +236,15 @@ int main(int argc, char* argv[]) {
         else if (arg == "--no-verify-hostname") {
             verify_hostname = false;
         }
+        else if (arg == "--auth") {
+            auth_enabled = true;
+        }
+        else if (arg == "--username" && i + 1 < argc) {
+            username = argv[++i];
+        }
+        else if (arg == "--password" && i + 1 < argc) {
+            password = argv[++i];
+        }
         else {
             std::cerr << "Unknown argument: " << arg << std::endl;
             printHelp();
@@ -241,7 +258,34 @@ int main(int argc, char* argv[]) {
     
     try {
         // 创建服务端实例
-        if (ssl_enabled) {
+        if (ssl_enabled && auth_enabled) {
+            // 创建SSL配置
+            SslConfig ssl_config;
+            ssl_config.enabled = true;
+            ssl_config.ca_file = ca_file;
+            ssl_config.cert_file = cert_file;
+            ssl_config.key_file = key_file;
+            ssl_config.verify_peer = verify_peer;
+            ssl_config.verify_hostname = verify_hostname;
+            ssl_config.tls_version = "tlsv1.2";
+            ssl_config.ciphers = "HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA";
+            
+            // 创建身份验证配置
+            AuthConfig auth_config;
+            auth_config.enabled = true;
+            auth_config.username = username;
+            auth_config.password = password;
+            
+            g_server = std::make_unique<Server>(server_id, mqtt_host, mqtt_port, ssl_config, auth_config);
+            
+            std::cout << "SSL/TLS + Authentication enabled with configuration:" << std::endl;
+            if (!ca_file.empty()) std::cout << "  CA file: " << ca_file << std::endl;
+            if (!cert_file.empty()) std::cout << "  Cert file: " << cert_file << std::endl;
+            if (!key_file.empty()) std::cout << "  Key file: " << key_file << std::endl;
+            std::cout << "  Verify peer: " << (verify_peer ? "yes" : "no") << std::endl;
+            std::cout << "  Verify hostname: " << (verify_hostname ? "yes" : "no") << std::endl;
+            std::cout << "  Username: " << username << std::endl;
+        } else if (ssl_enabled) {
             // 创建SSL配置
             SslConfig ssl_config;
             ssl_config.enabled = true;
@@ -261,6 +305,17 @@ int main(int argc, char* argv[]) {
             if (!key_file.empty()) std::cout << "  Key file: " << key_file << std::endl;
             std::cout << "  Verify peer: " << (verify_peer ? "yes" : "no") << std::endl;
             std::cout << "  Verify hostname: " << (verify_hostname ? "yes" : "no") << std::endl;
+        } else if (auth_enabled) {
+            // 创建身份验证配置
+            AuthConfig auth_config;
+            auth_config.enabled = true;
+            auth_config.username = username;
+            auth_config.password = password;
+            
+            g_server = std::make_unique<Server>(server_id, mqtt_host, mqtt_port, auth_config);
+            
+            std::cout << "Authentication enabled with configuration:" << std::endl;
+            std::cout << "  Username: " << username << std::endl;
         } else {
             g_server = std::make_unique<Server>(server_id, mqtt_host, mqtt_port);
         }

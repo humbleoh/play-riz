@@ -26,6 +26,15 @@ struct SslConfig {
 };
 
 /**
+ * 身份验证配置结构体
+ */
+struct AuthConfig {
+    bool enabled = false;                    // 是否启用身份验证
+    std::string username;                    // 用户名
+    std::string password;                    // 密码
+};
+
+/**
  * MQTT客户端基础类
  * 提供MQTT连接、消息发布/订阅、重连等基础功能
  */
@@ -59,6 +68,36 @@ public:
                const std::string& host,
                int port,
                const SslConfig& ssl_config,
+               int keep_alive = 60);
+    
+    /**
+     * 构造函数（支持身份验证）
+     * @param client_id 客户端ID
+     * @param host MQTT服务器地址
+     * @param port MQTT服务器端口
+     * @param auth_config 身份验证配置
+     * @param keep_alive 保活时间（秒）
+     */
+    MqttClient(const std::string& client_id,
+               const std::string& host,
+               int port,
+               const AuthConfig& auth_config,
+               int keep_alive = 60);
+    
+    /**
+     * 构造函数（支持SSL/TLS和身份验证）
+     * @param client_id 客户端ID
+     * @param host MQTT服务器地址
+     * @param port MQTT服务器端口
+     * @param ssl_config SSL/TLS配置
+     * @param auth_config 身份验证配置
+     * @param keep_alive 保活时间（秒）
+     */
+    MqttClient(const std::string& client_id,
+               const std::string& host,
+               int port,
+               const SslConfig& ssl_config,
+               const AuthConfig& auth_config,
                int keep_alive = 60);
     
     /**
@@ -152,6 +191,19 @@ public:
      * @return SSL配置
      */
     const SslConfig& getSslConfig() const;
+    
+    /**
+     * 配置身份验证
+     * @param auth_config 身份验证配置
+     * @return 配置是否成功
+     */
+    bool configureAuth(const AuthConfig& auth_config);
+    
+    /**
+     * 获取当前身份验证配置
+     * @return 身份验证配置
+     */
+    const AuthConfig& getAuthConfig() const;
 
 protected:
     // MQTT回调函数
@@ -172,6 +224,7 @@ private:
     int m_port;                             // 服务器端口
     int m_keep_alive;                       // 保活时间
     SslConfig m_ssl_config;                 // SSL/TLS配置
+    AuthConfig m_auth_config;               // 身份验证配置
     
     std::atomic<bool> m_connected;          // 连接状态
     std::atomic<bool> m_running;            // 运行状态

@@ -86,6 +86,99 @@ MqttClient::MqttClient(const std::string& client_id,
     }
 }
 
+MqttClient::MqttClient(const std::string& client_id,
+                       const std::string& host,
+                       int port,
+                       const AuthConfig& auth_config,
+                       int keep_alive)
+    : m_client_id(client_id)
+    , m_host(host)
+    , m_port(port)
+    , m_keep_alive(keep_alive)
+    , m_auth_config(auth_config)
+    , m_connected(false)
+    , m_running(false)
+    , m_auto_reconnect(false)
+    , m_retry_interval(5)
+    , m_mosquitto(nullptr)
+{
+    // 初始化mosquitto库（线程安全）
+    std::lock_guard<std::mutex> lock(s_init_mutex);
+    if (!s_lib_initialized) {
+        mosquitto_lib_init();
+        s_lib_initialized = true;
+    }
+    
+    // 创建mosquitto客户端实例
+    m_mosquitto = mosquitto_new(m_client_id.c_str(), true, this);
+    if (!m_mosquitto) {
+        throw std::runtime_error("Failed to create mosquitto client");
+    }
+    
+    // 设置回调函数
+    mosquitto_connect_callback_set(m_mosquitto, onConnect);
+    mosquitto_disconnect_callback_set(m_mosquitto, onDisconnect);
+    mosquitto_message_callback_set(m_mosquitto, onMessage);
+    mosquitto_subscribe_callback_set(m_mosquitto, onSubscribe);
+    mosquitto_unsubscribe_callback_set(m_mosquitto, onUnsubscribe);
+    mosquitto_publish_callback_set(m_mosquitto, onPublish);
+    
+    // 配置身份验证
+    if (m_auth_config.enabled) {
+        configureAuth(m_auth_config);
+    }
+}
+
+MqttClient::MqttClient(const std::string& client_id,
+                       const std::string& host,
+                       int port,
+                       const SslConfig& ssl_config,
+                       const AuthConfig& auth_config,
+                       int keep_alive)
+    : m_client_id(client_id)
+    , m_host(host)
+    , m_port(port)
+    , m_keep_alive(keep_alive)
+    , m_ssl_config(ssl_config)
+    , m_auth_config(auth_config)
+    , m_connected(false)
+    , m_running(false)
+    , m_auto_reconnect(false)
+    , m_retry_interval(5)
+    , m_mosquitto(nullptr)
+{
+    // 初始化mosquitto库（线程安全）
+    std::lock_guard<std::mutex> lock(s_init_mutex);
+    if (!s_lib_initialized) {
+        mosquitto_lib_init();
+        s_lib_initialized = true;
+    }
+    
+    // 创建mosquitto客户端实例
+    m_mosquitto = mosquitto_new(m_client_id.c_str(), true, this);
+    if (!m_mosquitto) {
+        throw std::runtime_error("Failed to create mosquitto client");
+    }
+    
+    // 设置回调函数
+    mosquitto_connect_callback_set(m_mosquitto, onConnect);
+    mosquitto_disconnect_callback_set(m_mosquitto, onDisconnect);
+    mosquitto_message_callback_set(m_mosquitto, onMessage);
+    mosquitto_subscribe_callback_set(m_mosquitto, onSubscribe);
+    mosquitto_unsubscribe_callback_set(m_mosquitto, onUnsubscribe);
+    mosquitto_publish_callback_set(m_mosquitto, onPublish);
+    
+    // 配置SSL/TLS
+    if (m_ssl_config.enabled) {
+        configureSsl(m_ssl_config);
+    }
+    
+    // 配置身份验证
+    if (m_auth_config.enabled) {
+        configureAuth(m_auth_config);
+    }
+}
+
 MqttClient::~MqttClient() {
     stop();
     
@@ -384,4 +477,44 @@ bool MqttClient::configureSsl(const SslConfig& ssl_config) {
 
 const SslConfig& MqttClient::getSslConfig() const {
     return m_ssl_config;
+}
+
+bool MqttClient::configureAuth(const AuthConfig& auth_config) {
+    if (!m_mosquitto) {
+        std::cerr << "MQTT client not initialized" << std::endl;
+        return false;
+    }
+    
+    m_auth_config = auth_config;
+    
+    if (!auth_config.enabled) {
+        std::cout << "Authentication disabled" << std::endl;
+        return true;
+    }
+    
+    if (auth_config.username.empty()) {
+        std::cerr << "Username cannot be empty when authentication is enabled" << std::endl;
+        return false;
+    }
+    
+    std::cout << "Configuring MQTT authentication..." << std::endl;
+    std::cout << "Username: " << auth_config.username << std::endl;
+    std::cout << "Password: " << (auth_config.password.empty() ? "(empty)" : "(set)") << std::endl;
+    
+    // 设置用户名和密码
+    int result = mosquitto_username_pw_set(m_mosquitto, 
+                                          auth_config.username.c_str(),
+                                          auth_config.password.empty() ? nullptr : auth_config.password.c_str());
+    
+    if (result != MOSQ_ERR_SUCCESS) {
+        std::cerr << "Failed to set username/password: " << mosquitto_strerror(result) << std::endl;
+        return false;
+    }
+    
+    std::cout << "Authentication configured successfully" << std::endl;
+    return true;
+}
+
+const AuthConfig& MqttClient::getAuthConfig() const {
+    return m_auth_config;
 }

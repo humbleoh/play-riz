@@ -67,6 +67,32 @@ public:
            const SslConfig& ssl_config);
     
     /**
+     * 构造函数（支持身份验证）
+     * @param server_id 服务端ID
+     * @param mqtt_host MQTT服务器地址
+     * @param mqtt_port MQTT服务器端口
+     * @param auth_config 身份验证配置
+     */
+    Server(const std::string& server_id,
+           const std::string& mqtt_host,
+           int mqtt_port,
+           const AuthConfig& auth_config);
+    
+    /**
+     * 构造函数（支持SSL/TLS + 身份验证）
+     * @param server_id 服务端ID
+     * @param mqtt_host MQTT服务器地址
+     * @param mqtt_port MQTT服务器端口
+     * @param ssl_config SSL/TLS配置
+     * @param auth_config 身份验证配置
+     */
+    Server(const std::string& server_id,
+           const std::string& mqtt_host,
+           int mqtt_port,
+           const SslConfig& ssl_config,
+           const AuthConfig& auth_config);
+    
+    /**
      * 析构函数
      */
     ~Server();

@@ -73,6 +73,36 @@ public:
            const SslConfig& ssl_config);
     
     /**
+     * 构造函数（支持用户名/密码认证）
+     * @param device_id 设备ID
+     * @param device_type 设备类型
+     * @param mqtt_host MQTT服务器地址
+     * @param mqtt_port MQTT服务器端口
+     * @param auth_config 认证配置
+     */
+    Device(const std::string& device_id,
+           const std::string& device_type,
+           const std::string& mqtt_host,
+           int mqtt_port,
+           const AuthConfig& auth_config);
+    
+    /**
+     * 构造函数（支持SSL/TLS + 用户名/密码认证）
+     * @param device_id 设备ID
+     * @param device_type 设备类型
+     * @param mqtt_host MQTT服务器地址
+     * @param mqtt_port MQTT服务器端口
+     * @param ssl_config SSL/TLS配置
+     * @param auth_config 认证配置
+     */
+    Device(const std::string& device_id,
+           const std::string& device_type,
+           const std::string& mqtt_host,
+           int mqtt_port,
+           const SslConfig& ssl_config,
+           const AuthConfig& auth_config);
+    
+    /**
      * 析构函数
      */
     ~Device();

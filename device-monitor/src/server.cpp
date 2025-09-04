@@ -86,6 +86,83 @@ Server::Server(const std::string& server_id,
     m_mqtt_client->setAutoReconnect(true, 5);
 }
 
+Server::Server(const std::string& server_id,
+               const std::string& mqtt_host,
+               int mqtt_port,
+               const AuthConfig& auth_config)
+    : m_server_id(server_id)
+    , m_running(false)
+    , m_device_timeout(300) // 默认5分钟超时
+    , m_command_counter(0)
+{
+    // 创建支持身份验证的MQTT客户端
+    m_mqtt_client = std::make_unique<MqttClient>("server_" + server_id, mqtt_host, mqtt_port, auth_config);
+    
+    // 设置消息回调
+    m_mqtt_client->setMessageCallback(
+        [this](const std::string& topic, const std::string& payload) {
+            handleMessage(topic, payload);
+        }
+    );
+    
+    // 设置连接状态回调
+    m_mqtt_client->setConnectionCallback(
+        [this](bool connected) {
+            if (connected) {
+                std::cout << "Server MQTT client connected (Auth)" << std::endl;
+                // 重新订阅所有主题
+                m_mqtt_client->subscribe(TOPIC_DEVICE_STATUS, 1);
+                m_mqtt_client->subscribe(TOPIC_DEVICE_RESPONSE, 1);
+                m_mqtt_client->subscribe(TOPIC_DEVICE_HEARTBEAT, 0);
+            } else {
+                std::cout << "Server MQTT client disconnected" << std::endl;
+            }
+        }
+    );
+    
+    // 启用自动重连
+    m_mqtt_client->setAutoReconnect(true, 5);
+}
+
+Server::Server(const std::string& server_id,
+               const std::string& mqtt_host,
+               int mqtt_port,
+               const SslConfig& ssl_config,
+               const AuthConfig& auth_config)
+    : m_server_id(server_id)
+    , m_running(false)
+    , m_device_timeout(300) // 默认5分钟超时
+    , m_command_counter(0)
+{
+    // 创建支持SSL和身份验证的MQTT客户端
+    m_mqtt_client = std::make_unique<MqttClient>("server_" + server_id, mqtt_host, mqtt_port, ssl_config, auth_config);
+    
+    // 设置消息回调
+    m_mqtt_client->setMessageCallback(
+        [this](const std::string& topic, const std::string& payload) {
+            handleMessage(topic, payload);
+        }
+    );
+    
+    // 设置连接状态回调
+    m_mqtt_client->setConnectionCallback(
+        [this](bool connected) {
+            if (connected) {
+                std::cout << "Server MQTT client connected (SSL/TLS + Auth)" << std::endl;
+                // 重新订阅所有主题
+                m_mqtt_client->subscribe(TOPIC_DEVICE_STATUS, 1);
+                m_mqtt_client->subscribe(TOPIC_DEVICE_RESPONSE, 1);
+                m_mqtt_client->subscribe(TOPIC_DEVICE_HEARTBEAT, 0);
+            } else {
+                std::cout << "Server MQTT client disconnected" << std::endl;
+            }
+        }
+    );
+    
+    // 启用自动重连
+    m_mqtt_client->setAutoReconnect(true, 5);
+}
+
 Server::~Server() {
     stop();
 }

@@ -76,6 +76,145 @@ Device::Device(const std::string& device_id,
                const std::string& device_type,
                const std::string& mqtt_host,
                int mqtt_port,
+               const AuthConfig& auth_config)
+    : m_device_id(device_id)
+    , m_device_type(device_type)
+    , m_device_status("offline")
+    , m_running(false)
+    , m_status_report_interval(60)  // 默认60秒上报一次状态
+    , m_heartbeat_interval(30)      // 默认30秒发送一次心跳
+    , m_start_time(std::chrono::system_clock::now())
+{
+    // 创建MQTT客户端（支持认证）
+    m_mqtt_client = std::make_unique<MqttClient>("device_" + device_id, mqtt_host, mqtt_port, auth_config);
+    
+    // 设置MQTT主题
+    m_topic_command = "device/" + device_id + "/command";
+    m_topic_status = "device/" + device_id + "/status";
+    m_topic_response = "device/" + device_id + "/response";
+    m_topic_heartbeat = "device/" + device_id + "/heartbeat";
+    m_topic_status_request = "device/" + device_id + "/status_request";
+    
+    // 设置消息回调
+    m_mqtt_client->setMessageCallback(
+        [this](const std::string& topic, const std::string& payload) {
+            handleMessage(topic, payload);
+        }
+    );
+    
+    // 设置连接状态回调
+    m_mqtt_client->setConnectionCallback(
+        [this](bool connected) {
+            handleConnectionChange(connected);
+        }
+    );
+    
+    // 启用自动重连
+    m_mqtt_client->setAutoReconnect(true, 5);
+    
+    // 注册默认命令处理器
+    registerCommandHandler("get_status", [this](const std::string& cmd_type, const Json::Value& params) {
+        CommandResult result;
+        result.success = true;
+        result.result_data = buildStatusMessage();
+        return result;
+    });
+    
+    registerCommandHandler("set_property", [this](const std::string& cmd_type, const Json::Value& params) {
+        CommandResult result;
+        if (params.isMember("name") && params.isMember("value")) {
+            std::string prop_name = params["name"].asString();
+            Json::Value prop_value = params["value"];
+            
+            if (updateProperty(prop_name, prop_value)) {
+                result.success = true;
+                result.result_data["message"] = "Property updated successfully";
+            } else {
+                result.success = false;
+                result.error_message = "Failed to update property or property not writable";
+            }
+        } else {
+            result.success = false;
+            result.error_message = "Missing required parameters: name, value";
+        }
+        return result;
+    });
+}
+
+Device::Device(const std::string& device_id,
+               const std::string& device_type,
+               const std::string& mqtt_host,
+               int mqtt_port,
+               const SslConfig& ssl_config,
+               const AuthConfig& auth_config)
+    : m_device_id(device_id)
+    , m_device_type(device_type)
+    , m_device_status("offline")
+    , m_running(false)
+    , m_status_report_interval(60)  // 默认60秒上报一次状态
+    , m_heartbeat_interval(30)      // 默认30秒发送一次心跳
+    , m_start_time(std::chrono::system_clock::now())
+{
+    // 创建MQTT客户端（支持SSL/TLS + 认证）
+    m_mqtt_client = std::make_unique<MqttClient>("device_" + device_id, mqtt_host, mqtt_port, ssl_config, auth_config);
+    
+    // 设置MQTT主题
+    m_topic_command = "device/" + device_id + "/command";
+    m_topic_status = "device/" + device_id + "/status";
+    m_topic_response = "device/" + device_id + "/response";
+    m_topic_heartbeat = "device/" + device_id + "/heartbeat";
+    m_topic_status_request = "device/" + device_id + "/status_request";
+    
+    // 设置消息回调
+    m_mqtt_client->setMessageCallback(
+        [this](const std::string& topic, const std::string& payload) {
+            handleMessage(topic, payload);
+        }
+    );
+    
+    // 设置连接状态回调
+    m_mqtt_client->setConnectionCallback(
+        [this](bool connected) {
+            handleConnectionChange(connected);
+        }
+    );
+    
+    // 启用自动重连
+    m_mqtt_client->setAutoReconnect(true, 5);
+    
+    // 注册默认命令处理器
+    registerCommandHandler("get_status", [this](const std::string& cmd_type, const Json::Value& params) {
+        CommandResult result;
+        result.success = true;
+        result.result_data = buildStatusMessage();
+        return result;
+    });
+    
+    registerCommandHandler("set_property", [this](const std::string& cmd_type, const Json::Value& params) {
+        CommandResult result;
+        if (params.isMember("name") && params.isMember("value")) {
+            std::string prop_name = params["name"].asString();
+            Json::Value prop_value = params["value"];
+            
+            if (updateProperty(prop_name, prop_value)) {
+                result.success = true;
+                result.result_data["message"] = "Property updated successfully";
+            } else {
+                result.success = false;
+                result.error_message = "Failed to update property or property not writable";
+            }
+        } else {
+            result.success = false;
+            result.error_message = "Missing required parameters: name, value";
+        }
+        return result;
+    });
+}
+
+Device::Device(const std::string& device_id,
+               const std::string& device_type,
+               const std::string& mqtt_host,
+               int mqtt_port,
                const SslConfig& ssl_config)
     : m_device_id(device_id)
     , m_device_type(device_type)

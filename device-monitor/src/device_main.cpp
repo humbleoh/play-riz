@@ -38,6 +38,9 @@ void printHelp() {
     std::cout << "  --key-file <path>       Client private key file path" << std::endl;
     std::cout << "  --no-verify-peer        Disable peer certificate verification" << std::endl;
     std::cout << "  --no-verify-hostname    Disable hostname verification" << std::endl;
+    std::cout << "  --auth                  Enable username/password authentication" << std::endl;
+    std::cout << "  --username <user>       MQTT username for authentication" << std::endl;
+    std::cout << "  --password <pass>       MQTT password for authentication" << std::endl;
 }
 
 // 模拟设备数据更新
@@ -222,6 +225,11 @@ int main(int argc, char* argv[]) {
     bool verify_peer = true;
     bool verify_hostname = true;
     
+    // 身份验证配置参数
+    bool auth_enabled = false;
+    std::string username = "";
+    std::string password = "";
+    
     // 解析命令行参数
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -269,6 +277,15 @@ int main(int argc, char* argv[]) {
         else if (arg == "--no-verify-hostname") {
             verify_hostname = false;
         }
+        else if (arg == "--auth") {
+            auth_enabled = true;
+        }
+        else if (arg == "--username" && i + 1 < argc) {
+            username = argv[++i];
+        }
+        else if (arg == "--password" && i + 1 < argc) {
+            password = argv[++i];
+        }
         else {
             std::cerr << "Unknown argument: " << arg << std::endl;
             printHelp();
@@ -289,7 +306,35 @@ int main(int argc, char* argv[]) {
     
     try {
         // 创建设备实例
-        if (ssl_enabled) {
+        if (ssl_enabled && auth_enabled) {
+            // 配置SSL设置
+            SslConfig ssl_config;
+            ssl_config.enabled = true;
+            ssl_config.ca_file = ca_file;
+            ssl_config.cert_file = cert_file;
+            ssl_config.key_file = key_file;
+            ssl_config.verify_peer = verify_peer;
+            ssl_config.verify_hostname = verify_hostname;
+            ssl_config.tls_version = "tlsv1.2";
+            ssl_config.ciphers = "HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA";
+            
+            // 配置认证设置
+            AuthConfig auth_config;
+            auth_config.enabled = true;
+            auth_config.username = username;
+            auth_config.password = password;
+            
+            std::cout << "SSL/TLS Configuration:" << std::endl;
+            std::cout << "  CA File: " << (ca_file.empty() ? "(not specified)" : ca_file) << std::endl;
+            std::cout << "  Cert File: " << (cert_file.empty() ? "(not specified)" : cert_file) << std::endl;
+            std::cout << "  Key File: " << (key_file.empty() ? "(not specified)" : key_file) << std::endl;
+            std::cout << "  Verify Peer: " << (verify_peer ? "Yes" : "No") << std::endl;
+            std::cout << "  Verify Hostname: " << (verify_hostname ? "Yes" : "No") << std::endl;
+            std::cout << "  TLS Version: " << ssl_config.tls_version << std::endl;
+            std::cout << "Authentication Status: Enabled (username: " << username << ")" << std::endl;
+            
+            g_device = std::make_unique<Device>(device_id, device_type, mqtt_host, mqtt_port, ssl_config, auth_config);
+        } else if (ssl_enabled) {
             // 配置SSL设置
             SslConfig ssl_config;
             ssl_config.enabled = true;
@@ -310,6 +355,16 @@ int main(int argc, char* argv[]) {
             std::cout << "  TLS Version: " << ssl_config.tls_version << std::endl;
             
             g_device = std::make_unique<Device>(device_id, device_type, mqtt_host, mqtt_port, ssl_config);
+        } else if (auth_enabled) {
+            // 配置认证设置
+            AuthConfig auth_config;
+            auth_config.enabled = true;
+            auth_config.username = username;
+            auth_config.password = password;
+            
+            std::cout << "Authentication Status: Enabled (username: " << username << ")" << std::endl;
+            
+            g_device = std::make_unique<Device>(device_id, device_type, mqtt_host, mqtt_port, auth_config);
         } else {
             g_device = std::make_unique<Device>(device_id, device_type, mqtt_host, mqtt_port);
         }
