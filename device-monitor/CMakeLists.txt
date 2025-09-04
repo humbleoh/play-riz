@@ -8,10 +8,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 查找必要的包
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(MOSQUITTO REQUIRED libmosquitto)
+pkg_check_modules(JSONCPP REQUIRED jsoncpp)
 
 # 包含头文件目录
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${MOSQUITTO_INCLUDE_DIRS})
+include_directories(${JSONCPP_INCLUDE_DIRS})
+
+# 添加库搜索路径
+link_directories(${MOSQUITTO_LIBRARY_DIRS})
+link_directories(${JSONCPP_LIBRARY_DIRS})
 
 # 设置源文件目录
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
@@ -39,8 +45,12 @@ add_executable(device
 )
 
 # 链接库
-target_link_libraries(server mqtt_client pthread)
-target_link_libraries(device mqtt_client pthread)
+target_link_libraries(server mqtt_client ${JSONCPP_LIBRARIES} pthread)
+target_link_libraries(device mqtt_client ${JSONCPP_LIBRARIES} pthread)
+
+# 设置编译选项
+target_compile_options(server PRIVATE ${JSONCPP_CFLAGS_OTHER})
+target_compile_options(device PRIVATE ${JSONCPP_CFLAGS_OTHER})
 
 # 设置编译选项
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
