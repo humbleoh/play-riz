@@ -43,6 +43,49 @@ MqttClient::MqttClient(const std::string& client_id,
     mosquitto_publish_callback_set(m_mosquitto, onPublish);
 }
 
+MqttClient::MqttClient(const std::string& client_id,
+                       const std::string& host,
+                       int port,
+                       const SslConfig& ssl_config,
+                       int keep_alive)
+    : m_client_id(client_id)
+    , m_host(host)
+    , m_port(port)
+    , m_keep_alive(keep_alive)
+    , m_ssl_config(ssl_config)
+    , m_connected(false)
+    , m_running(false)
+    , m_auto_reconnect(false)
+    , m_retry_interval(5)
+    , m_mosquitto(nullptr)
+{
+    // 初始化mosquitto库（线程安全）
+    std::lock_guard<std::mutex> lock(s_init_mutex);
+    if (!s_lib_initialized) {
+        mosquitto_lib_init();
+        s_lib_initialized = true;
+    }
+    
+    // 创建mosquitto客户端实例
+    m_mosquitto = mosquitto_new(m_client_id.c_str(), true, this);
+    if (!m_mosquitto) {
+        throw std::runtime_error("Failed to create mosquitto client");
+    }
+    
+    // 设置回调函数
+    mosquitto_connect_callback_set(m_mosquitto, onConnect);
+    mosquitto_disconnect_callback_set(m_mosquitto, onDisconnect);
+    mosquitto_message_callback_set(m_mosquitto, onMessage);
+    mosquitto_subscribe_callback_set(m_mosquitto, onSubscribe);
+    mosquitto_unsubscribe_callback_set(m_mosquitto, onUnsubscribe);
+    mosquitto_publish_callback_set(m_mosquitto, onPublish);
+    
+    // 配置SSL/TLS
+    if (m_ssl_config.enabled) {
+        configureSsl(m_ssl_config);
+    }
+}
+
 MqttClient::~MqttClient() {
     stop();
     
@@ -127,13 +170,14 @@ void MqttClient::start() {
     
     m_running = true;
     
-    // 启动消息循环线程
+    // 启动消息循环线程，使用mosquitto_loop_forever
     m_loop_thread = std::thread([this]() {
         while (m_running) {
-            int result = mosquitto_loop(m_mosquitto, 100, 1);
-            if (result != MOSQ_ERR_SUCCESS && result != MOSQ_ERR_NO_CONN) {
+            int result = mosquitto_loop_forever(m_mosquitto, 1000, 1);
+            if (result != MOSQ_ERR_SUCCESS) {
                 std::cerr << "MQTT loop error: " << mosquitto_strerror(result) << std::endl;
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                if (!m_running) break;
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             }
         }
     });
@@ -257,4 +301,87 @@ void MqttClient::reconnectLoop() {
             return !m_auto_reconnect || !m_running;
         });
     }
+}
+
+// 静态密码回调函数
+static int password_callback(char *buf, int size, int rwflag, void *userdata) {
+    const std::string* password = static_cast<const std::string*>(userdata);
+    if (password && !password->empty()) {
+        int len = std::min(size - 1, static_cast<int>(password->length()));
+        std::strncpy(buf, password->c_str(), len);
+        buf[len] = '\0';
+        return len;
+    }
+    return 0;
+}
+
+bool MqttClient::configureSsl(const SslConfig& ssl_config) {
+    if (!m_mosquitto) {
+        return false;
+    }
+    
+    m_ssl_config = ssl_config;
+    
+    if (!ssl_config.enabled) {
+        return true;
+    }
+    
+    int result;
+    
+    // 设置TLS选项
+    if (!ssl_config.ca_file.empty()) {
+        const char* cert_file = ssl_config.cert_file.empty() ? nullptr : ssl_config.cert_file.c_str();
+        const char* key_file = ssl_config.key_file.empty() ? nullptr : ssl_config.key_file.c_str();
+        
+        // 设置密码回调函数（如果有密码）
+        int (*pw_callback)(char *, int, int, void *) = nullptr;
+        void* userdata = nullptr;
+        if (!ssl_config.key_password.empty()) {
+            pw_callback = password_callback;
+            userdata = const_cast<std::string*>(&ssl_config.key_password);
+        }
+        
+        result = mosquitto_tls_set(m_mosquitto, 
+                                   ssl_config.ca_file.c_str(),
+                                   nullptr,  // capath
+                                   cert_file,
+                                   key_file,
+                                   pw_callback); // password callback function
+        
+        if (result != MOSQ_ERR_SUCCESS) {
+            std::cerr << "Failed to set TLS certificates: " << mosquitto_strerror(result) << std::endl;
+            return false;
+        }
+        
+        // 设置用户数据用于密码回调
+        if (userdata) {
+            mosquitto_user_data_set(m_mosquitto, userdata);
+        }
+    }
+    
+    // 设置TLS选项（证书验证）
+    result = mosquitto_tls_opts_set(m_mosquitto,
+                                    0,          // 完全禁用证书验证
+                                    nullptr,    // 不指定TLS版本，使用默认
+                                    nullptr);   // 不指定加密套件，使用默认
+    
+    if (result != MOSQ_ERR_SUCCESS) {
+        std::cerr << "Failed to set TLS options: " << mosquitto_strerror(result) << std::endl;
+        return false;
+    }
+    
+    // 设置主机名验证
+    result = mosquitto_tls_insecure_set(m_mosquitto, !ssl_config.verify_hostname);
+    
+    if (result != MOSQ_ERR_SUCCESS) {
+        std::cerr << "Failed to set TLS hostname verification: " << mosquitto_strerror(result) << std::endl;
+        return false;
+    }
+    
+    std::cout << "SSL/TLS configured successfully" << std::endl;
+    return true;
+}
+
+const SslConfig& MqttClient::getSslConfig() const {
+    return m_ssl_config;
 }

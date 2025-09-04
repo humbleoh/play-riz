@@ -11,6 +11,21 @@
 #include <chrono>
 
 /**
+ * SSL/TLS配置结构体
+ */
+struct SslConfig {
+    bool enabled = false;                    // 是否启用SSL/TLS
+    std::string ca_file;                     // CA证书文件路径
+    std::string cert_file;                   // 客户端证书文件路径
+    std::string key_file;                    // 客户端私钥文件路径
+    std::string key_password;                // 私钥密码
+    bool verify_peer = true;                 // 是否验证服务器证书
+    bool verify_hostname = true;             // 是否验证主机名
+    std::string ciphers;                     // 允许的加密套件
+    std::string tls_version = "tlsv1.2";      // TLS版本
+};
+
+/**
  * MQTT客户端基础类
  * 提供MQTT连接、消息发布/订阅、重连等基础功能
  */
@@ -30,6 +45,20 @@ public:
     MqttClient(const std::string& client_id, 
                const std::string& host = "localhost", 
                int port = 1883, 
+               int keep_alive = 60);
+    
+    /**
+     * 构造函数（支持SSL/TLS）
+     * @param client_id 客户端ID
+     * @param host MQTT服务器地址
+     * @param port MQTT服务器端口
+     * @param ssl_config SSL/TLS配置
+     * @param keep_alive 保活时间（秒）
+     */
+    MqttClient(const std::string& client_id,
+               const std::string& host,
+               int port,
+               const SslConfig& ssl_config,
                int keep_alive = 60);
     
     /**
@@ -105,11 +134,24 @@ public:
     bool isConnected() const;
     
     /**
-     * 启用自动重连
-     * @param enable 是否启用
+     * 设置自动重连
+     * @param enable 是否启用自动重连
      * @param retry_interval 重连间隔（秒）
      */
     void setAutoReconnect(bool enable, int retry_interval = 5);
+    
+    /**
+     * 配置SSL/TLS
+     * @param ssl_config SSL/TLS配置
+     * @return 配置是否成功
+     */
+    bool configureSsl(const SslConfig& ssl_config);
+    
+    /**
+     * 获取当前SSL配置
+     * @return SSL配置
+     */
+    const SslConfig& getSslConfig() const;
 
 protected:
     // MQTT回调函数
@@ -129,6 +171,7 @@ private:
     std::string m_host;                     // 服务器地址
     int m_port;                             // 服务器端口
     int m_keep_alive;                       // 保活时间
+    SslConfig m_ssl_config;                 // SSL/TLS配置
     
     std::atomic<bool> m_connected;          // 连接状态
     std::atomic<bool> m_running;            // 运行状态

@@ -59,6 +59,20 @@ public:
            int mqtt_port = 1883);
     
     /**
+     * 构造函数（支持SSL/TLS）
+     * @param device_id 设备ID
+     * @param device_type 设备类型
+     * @param mqtt_host MQTT服务器地址
+     * @param mqtt_port MQTT服务器端口
+     * @param ssl_config SSL/TLS配置
+     */
+    Device(const std::string& device_id,
+           const std::string& device_type,
+           const std::string& mqtt_host,
+           int mqtt_port,
+           const SslConfig& ssl_config);
+    
+    /**
      * 析构函数
      */
     ~Device();

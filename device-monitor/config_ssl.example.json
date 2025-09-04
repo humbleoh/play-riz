@@ -1,0 +1,27 @@
+{
+  "mqtt": {
+    "host": "mqtt.example.com",
+    "port": 8883,
+    "ssl": {
+      "enabled": true,
+      "ca_file": "/path/to/ca.crt",
+      "cert_file": "/path/to/client.crt",
+      "key_file": "/path/to/client.key",
+      "key_password": "your_key_password",
+      "verify_peer": true,
+      "verify_hostname": true,
+      "ciphers": "ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!MD5:!DSS",
+      "tls_version": "tlsv1.2"
+    }
+  },
+  "server": {
+    "id": "monitoring_server",
+    "device_timeout": 300
+  },
+  "device": {
+    "id": "device_001",
+    "type": "sensor",
+    "status_report_interval": 60,
+    "heartbeat_interval": 30
+  }
+}

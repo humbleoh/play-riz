@@ -28,6 +28,12 @@ void printHelp() {
     std::cout << "  -H, --host <host>    MQTT broker host (default: localhost)" << std::endl;
     std::cout << "  -p, --port <port>    MQTT broker port (default: 1883)" << std::endl;
     std::cout << "  -t, --timeout <sec>  Device timeout in seconds (default: 300)" << std::endl;
+    std::cout << "  --ssl                Enable SSL/TLS connection" << std::endl;
+    std::cout << "  --ca-file <path>     CA certificate file path" << std::endl;
+    std::cout << "  --cert-file <path>   Client certificate file path" << std::endl;
+    std::cout << "  --key-file <path>    Client private key file path" << std::endl;
+    std::cout << "  --no-verify-peer     Disable peer certificate verification" << std::endl;
+    std::cout << "  --no-verify-hostname Disable hostname verification" << std::endl;
 }
 
 // 交互式命令处理
@@ -176,6 +182,14 @@ int main(int argc, char* argv[]) {
     int mqtt_port = 1883;
     int device_timeout = 300;
     
+    // SSL配置参数
+    bool ssl_enabled = false;
+    std::string ca_file = "";
+    std::string cert_file = "";
+    std::string key_file = "";
+    bool verify_peer = true;
+    bool verify_hostname = true;
+    
     // 解析命令行参数
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -196,6 +210,24 @@ int main(int argc, char* argv[]) {
         else if ((arg == "-t" || arg == "--timeout") && i + 1 < argc) {
             device_timeout = std::atoi(argv[++i]);
         }
+        else if (arg == "--ssl") {
+            ssl_enabled = true;
+        }
+        else if (arg == "--ca-file" && i + 1 < argc) {
+            ca_file = argv[++i];
+        }
+        else if (arg == "--cert-file" && i + 1 < argc) {
+            cert_file = argv[++i];
+        }
+        else if (arg == "--key-file" && i + 1 < argc) {
+            key_file = argv[++i];
+        }
+        else if (arg == "--no-verify-peer") {
+            verify_peer = false;
+        }
+        else if (arg == "--no-verify-hostname") {
+            verify_hostname = false;
+        }
         else {
             std::cerr << "Unknown argument: " << arg << std::endl;
             printHelp();
@@ -209,7 +241,29 @@ int main(int argc, char* argv[]) {
     
     try {
         // 创建服务端实例
-        g_server = std::make_unique<Server>(server_id, mqtt_host, mqtt_port);
+        if (ssl_enabled) {
+            // 创建SSL配置
+            SslConfig ssl_config;
+            ssl_config.enabled = true;
+            ssl_config.ca_file = ca_file;
+            ssl_config.cert_file = cert_file;
+            ssl_config.key_file = key_file;
+            ssl_config.verify_peer = verify_peer;
+            ssl_config.verify_hostname = verify_hostname;
+            ssl_config.tls_version = "tlsv1.2";
+            ssl_config.ciphers = "HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA";
+            
+            g_server = std::make_unique<Server>(server_id, mqtt_host, mqtt_port, ssl_config);
+            
+            std::cout << "SSL/TLS enabled with configuration:" << std::endl;
+            if (!ca_file.empty()) std::cout << "  CA file: " << ca_file << std::endl;
+            if (!cert_file.empty()) std::cout << "  Cert file: " << cert_file << std::endl;
+            if (!key_file.empty()) std::cout << "  Key file: " << key_file << std::endl;
+            std::cout << "  Verify peer: " << (verify_peer ? "yes" : "no") << std::endl;
+            std::cout << "  Verify hostname: " << (verify_hostname ? "yes" : "no") << std::endl;
+        } else {
+            g_server = std::make_unique<Server>(server_id, mqtt_host, mqtt_port);
+        }
         
         // 设置设备超时时间
         g_server->setDeviceTimeout(device_timeout);

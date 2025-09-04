@@ -57,10 +57,18 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
+# SSL测试程序
+add_executable(test_ssl test_ssl.cpp)
+target_link_libraries(test_ssl mqtt_client ${JSONCPP_LIBRARIES} pthread)
+target_compile_options(test_ssl PRIVATE ${JSONCPP_CFLAGS_OTHER})
+
 # 安装目标
-install(TARGETS server device
+install(TARGETS server device test_ssl
     RUNTIME DESTINATION bin
 )
+install(DIRECTORY include/ DESTINATION include)
+install(DIRECTORY src/ DESTINATION src)
+install(DIRECTORY examples/ DESTINATION examples)
 
 # 创建目录结构
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/include)
